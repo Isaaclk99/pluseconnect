@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ValentConnect</title>
+    <title>Pulse Connect</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <link
         href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Quicksand:wght@300;500&display=swap"
@@ -97,7 +97,6 @@
             color: var(--pink);
             font-weight: bold;
             text-transform: uppercase;
-            transition: 0.5s;
         }
 
         #gift-panel {
@@ -110,6 +109,8 @@
             border-radius: 50px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             z-index: 50;
+            left: 50%;
+            transform: translateX(-50%);
         }
 
         .gift-item {
@@ -142,7 +143,6 @@
             max-width: 400px;
             font-family: 'Dancing Script', cursive;
             font-size: 1.8rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
             border-left: 5px solid var(--pink);
         }
 
@@ -178,12 +178,12 @@
 
         @keyframes floatUp {
             0% {
-                transform: translateY(0) rotate(0deg);
+                transform: translateY(0);
                 opacity: 1;
             }
 
             100% {
-                transform: translateY(-400px) rotate(20deg);
+                transform: translateY(-400px);
                 opacity: 0;
             }
         }
@@ -193,27 +193,25 @@
 <body>
 
     <div id="auth-section" class="container">
-        <h1 style="font-family: 'Dancing Script'; color: var(--pink); font-size: 3.5rem; margin-bottom:10px;">Pulse</h1>
+        <h1 style="font-family: 'Dancing Script'; color: var(--pink); font-size: 3.5rem;">Pulse</h1>
         <div id="login-form">
             <input type="text" id="logName" placeholder="Your Name">
-            <input type="text" id="logRoom" placeholder="Secret Room Code">
+            <input type="text" id="logRoom" placeholder="Room Code">
             <button id="loginBtn" onclick="login()">Enter Space</button>
             <p onclick="toggleForm()" style="cursor:pointer; color:var(--pink); font-size:0.8rem; margin-top:20px;">
                 Create New Room</p>
         </div>
 
         <div id="reg-form" style="display:none">
-            <input type="text" id="regRoom" placeholder="Room Code (Ex: LOVE2024)">
+            <input type="text" id="regRoom" placeholder="Room Code">
             <input type="text" id="p1" placeholder="Partner 1 Name">
             <input type="text" id="p2" placeholder="Partner 2 Name">
-            <textarea id="l1" placeholder="Letter for Partner 1"></textarea>
-            <textarea id="l2" placeholder="Letter for Partner 2"></textarea>
+            <textarea id="l1" placeholder="Letter for P1"></textarea>
+            <textarea id="l2" placeholder="Letter for P2"></textarea>
             <select id="songChoice">
                 <option value="perfect">Perfect - Ed Sheeran</option>
                 <option value="thinking">Thinking Out Loud</option>
                 <option value="allofme">All of Me</option>
-                <option value="ilikemebetter">I Like Me Better</option>
-                <option value="herewithme">Here With Me</option>
             </select>
             <button id="regBtn" onclick="register()">Register Room</button>
             <p onclick="toggleForm()" style="cursor:pointer; color:var(--pink); font-size:0.8rem; margin-top:15px;">Back
@@ -230,7 +228,7 @@
             style="display:none; width:200px; margin:20px auto; color:var(--pink); background:white; border:2px solid var(--pink);"
             onclick="openLetter()">Read My Letter</button>
 
-        <div id="gift-panel" style="display:none; left: 50%; transform: translateX(-50%);">
+        <div id="gift-panel" style="display:none;">
             <span class="gift-item" onclick="sendGift('🌹')">🌹</span>
             <span class="gift-item" onclick="sendGift('🍫')">🍫</span>
             <span class="gift-item" onclick="sendGift('💍')">💍</span>
@@ -241,44 +239,26 @@
     <div id="letter-modal">
         <div class="paper">
             <div id="letterBody"></div>
-            <button onclick="closeLetter()" style="background:var(--text-dark); margin-top:20px;">Close Letter</button>
+            <button onclick="closeLetter()" style="background:var(--text-dark); margin-top:20px;">Close</button>
         </div>
     </div>
 
     <audio id="musicPlayer" loop></audio>
 
     <script>
-        const BACKEND_URL = "https://valentconnect-backend.vercel.app";
-        let myRoom = "";
-        let myName = "";
-        let socket = null;
+        const BACKEND_URL = "https://valentconnect.onrender.com"; // UPDATE THIS TO YOUR ACTUAL RENDER URL
+        let myRoom = "", myName = "", socket = null;
 
         const songPaths = {
-            perfect: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", // Replace with your actual paths
-            thinking: "./music/thinking.mp3",
-            allofme: "./music/allofme.mp3",
-            ilikemebetter: "./music/ilikemebetter.mp3",
-            herewithme: "./music/herewithme.mp3"
+            perfect: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+            thinking: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+            allofme: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
         };
-
-        // 1. Initialize Socket with Vercel-friendly settings
-        if (typeof io !== 'undefined') {
-            socket = io(BACKEND_URL, {
-                transports: ['polling', 'websocket'],
-                withCredentials: true,
-                autoConnect: false
-            });
-            setupSocketListeners();
-        }
 
         function setupSocketListeners() {
             socket.on('receive-gift', d => showFloatingGift(d.emoji));
             socket.on('receive-pulse', d => triggerVisuals(d.x, d.y, false));
-
-            socket.on('update-count', count => {
-                document.getElementById('pulse-count').innerText = `${count} Pulses`;
-            });
-
+            socket.on('update-count', count => { document.getElementById('pulse-count').innerText = `${count} Pulses`; });
             socket.on('update-ui', d => {
                 const statusBar = document.getElementById('status-bar');
                 if (d.isPartnerPresent) {
@@ -294,13 +274,14 @@
         }
 
         async function login() {
-            const btn = document.getElementById('loginBtn');
             const nameInput = document.getElementById('logName').value.trim();
             const roomInput = document.getElementById('logRoom').value.trim().toUpperCase();
+            if (!nameInput || !roomInput) return alert("Fields required");
 
-            if (!nameInput || !roomInput) return alert("Please enter both fields");
+            // Unlock Audio
+            const player = document.getElementById('musicPlayer');
+            player.play().then(() => player.pause()).catch(() => { });
 
-            btn.innerText = "Connecting...";
             try {
                 const res = await fetch(`${BACKEND_URL}/api/login`, {
                     method: 'POST',
@@ -310,40 +291,35 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    myName = nameInput;
-                    myRoom = roomInput;
-
+                    myName = nameInput; myRoom = roomInput;
                     document.getElementById('letterBody').innerText = data.letter;
                     document.getElementById('pulse-count').innerText = `${data.pulseCount} Pulses`;
-                    document.getElementById('musicPlayer').src = songPaths[data.song] || songPaths.perfect;
+                    player.src = songPaths[data.song] || songPaths.perfect;
 
                     document.getElementById('auth-section').style.display = 'none';
                     document.getElementById('game-interface').style.display = 'block';
 
-                    socket.connect();
+                    socket = io(BACKEND_URL, { transports: ['polling', 'websocket'], withCredentials: true });
+                    setupSocketListeners();
                     socket.emit('join-room', myRoom);
-                } else { alert("Login failed. Check name and room code."); }
-            } catch (e) { alert("Server is waking up, please try again in 5 seconds."); }
-            finally { btn.innerText = "Enter Space"; }
+                } else { alert("Login failed"); }
+            } catch (e) { alert("Server waking up... try again in 10s"); }
         }
 
-        function sendGift(emoji) {
-            if (socket) socket.emit('send-gift', { roomId: myRoom, emoji: emoji });
-        }
+        function sendGift(emoji) { if (socket) socket.emit('send-gift', { roomId: myRoom, emoji }); }
 
         function showFloatingGift(emoji) {
             const gift = document.createElement('div');
             gift.className = 'floating-gift';
             gift.innerText = emoji;
-            gift.style.left = (Math.random() * 70 + 15) + 'vw';
+            gift.style.left = Math.random() * 80 + 10 + 'vw';
             gift.style.top = '80vh';
             document.body.appendChild(gift);
             setTimeout(() => gift.remove(), 2500);
         }
 
         document.getElementById('heart').addEventListener('click', (e) => {
-            const x = e.clientX / window.innerWidth;
-            const y = e.clientY / window.innerHeight;
+            const x = e.clientX / window.innerWidth, y = e.clientY / window.innerHeight;
             if (socket) socket.emit('send-pulse', { roomId: myRoom, x, y });
             triggerVisuals(x, y, true);
         });
@@ -356,52 +332,33 @@
             if (!isMe) r.style.borderColor = "var(--success)";
             document.body.appendChild(r);
             setTimeout(() => r.remove(), 1200);
-
-            const h = document.getElementById('heart');
-            h.style.transform = "scale(1.2)";
-            setTimeout(() => h.style.transform = "scale(1)", 100);
         }
 
         function openLetter() {
             document.getElementById('letter-modal').style.display = 'flex';
-            document.getElementById('musicPlayer').play().catch(e => console.log("Audio play blocked"));
+            document.getElementById('musicPlayer').play();
         }
-
-        function closeLetter() {
-            document.getElementById('letter-modal').style.display = 'none';
-            document.getElementById('musicPlayer').pause();
-        }
-
+        function closeLetter() { document.getElementById('letter-modal').style.display = 'none'; }
         function toggleForm() {
-            const login = document.getElementById('login-form');
-            const reg = document.getElementById('reg-form');
-            login.style.display = login.style.display === 'none' ? 'block' : 'none';
-            reg.style.display = reg.style.display === 'none' ? 'block' : 'none';
+            document.getElementById('login-form').style.display = document.getElementById('login-form').style.display === 'none' ? 'block' : 'none';
+            document.getElementById('reg-form').style.display = document.getElementById('reg-form').style.display === 'none' ? 'block' : 'none';
         }
 
         async function register() {
-            const btn = document.getElementById('regBtn');
             const roomInput = document.getElementById('regRoom').value.trim().toUpperCase();
-            if (!roomInput) return alert("Room code required");
-
-            btn.innerText = "Registering...";
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        roomCode: roomInput,
-                        userA: document.getElementById('p1').value.trim(),
-                        userB: document.getElementById('p2').value.trim(),
-                        letterA: document.getElementById('l1').value,
-                        letterB: document.getElementById('l2').value,
-                        song: document.getElementById('songChoice').value
-                    })
-                });
-                if (res.ok) { alert("Success! You can now login."); toggleForm(); }
-                else { alert("Room code might already exist."); }
-            } catch (err) { alert("Error connecting to server."); }
-            finally { btn.innerText = "Register Room"; }
+            const res = await fetch(`${BACKEND_URL}/api/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    roomCode: roomInput,
+                    userA: document.getElementById('p1').value.trim(),
+                    userB: document.getElementById('p2').value.trim(),
+                    letterA: document.getElementById('l1').value,
+                    letterB: document.getElementById('l2').value,
+                    song: document.getElementById('songChoice').value
+                })
+            });
+            if (res.ok) { alert("Success! Now login."); toggleForm(); }
         }
     </script>
 </body>
