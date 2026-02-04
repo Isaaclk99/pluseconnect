@@ -1,375 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pulse Connect</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Quicksand:wght@300;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --pink: #ff4d6d;
-            --deep-red: #c9184a;
-            --soft-pink: #fff0f3;
-            --white: #ffffff;
-            --text-dark: #4a4a4a;
-            --success: #2ec4b6;
-        }
+async function login() {
+    const nameField = document.getElementById('logName').value.trim();
+    const roomField = document.getElementById('logRoom').value.trim().toUpperCase();
 
-        body {
-            margin: 0;
-            background: var(--white);
-            color: var(--text-dark);
-            font-family: 'Quicksand', sans-serif;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    if (!nameField || !roomField) return alert("Please enter both Name and Room Code");
 
-        .container {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 35px;
-            border-radius: 24px;
-            width: 350px;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(255, 77, 109, 0.2);
-            z-index: 100;
-            border: 2px solid var(--soft-pink);
-        }
+    // CRITICAL FOR MOBILE: Unlock audio on the very first user interaction
+    const player = document.getElementById('musicPlayer');
+    player.play().then(() => player.pause()).catch(() => { });
 
-        input, textarea, select {
-            background: var(--soft-pink);
-            border: 1px solid #ffccd5;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 12px;
-            width: 100%;
-            box-sizing: border-box;
-            font-family: inherit;
-        }
+    // Visual feedback that the server is waking up
+    const loginBtn = document.getElementById('loginBtn');
+    const originalText = loginBtn.innerText;
+    loginBtn.innerText = "Waking up server...";
+    loginBtn.disabled = true;
 
-        button {
-            background: var(--pink);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 12px;
-            width: 100%;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background: var(--deep-red);
-            transform: translateY(-2px);
-        }
-
-        #game-interface {
-            display: none;
-            text-align: center;
-            width: 100%;
-            position: relative;
-        }
-
-        .heart-main {
-            font-size: 10rem;
-            cursor: pointer;
-            user-select: none;
-            transition: transform 0.1s;
-            filter: drop-shadow(0 0 20px rgba(255, 77, 109, 0.5));
-        }
-
-        #status-bar {
-            position: fixed;
-            top: 40px;
-            width: 100%;
-            letter-spacing: 3px;
-            font-size: 0.7rem;
-            color: var(--pink);
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        #gift-panel {
-            position: fixed;
-            bottom: 30px;
-            display: flex;
-            gap: 15px;
-            background: white;
-            padding: 12px 25px;
-            border-radius: 50px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            z-index: 50;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        .gift-item { font-size: 1.8rem; cursor: pointer; transition: 0.2s; }
-        .gift-item:hover { transform: scale(1.3); }
-
-        .ripple {
-            position: absolute;
-            border: 3px solid var(--pink);
-            border-radius: 50%;
-            pointer-events: none;
-            animation: rippleEffect 1.2s ease-out forwards;
-        }
-
-        @keyframes rippleEffect {
-            from { width: 0; height: 0; opacity: 1; }
-            to { width: 500px; height: 500px; opacity: 0; }
-        }
-
-        .floating-gift {
-            position: fixed;
-            font-size: 4rem;
-            pointer-events: none;
-            z-index: 1000;
-            animation: floatUp 2.5s ease-out forwards;
-        }
-
-        @keyframes floatUp {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(-400px); opacity: 0; }
-        }
-
-        #letter-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(255, 240, 243, 0.95);
-            z-index: 200;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(10px);
-        }
-
-        .paper {
-            background: var(--white);
-            color: var(--deep-red);
-            padding: 40px;
-            border-radius: 2px;
-            width: 85%;
-            max-width: 400px;
-            font-family: 'Dancing Script', cursive;
-            font-size: 1.8rem;
-            border-left: 5px solid var(--pink);
-            box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
-        }
-    </style>
-</head>
-<body>
-
-    <div id="auth-section" class="container">
-        <h1 style="font-family: 'Dancing Script'; color: var(--pink); font-size: 3.5rem;">Pulse</h1>
-        <div id="login-form">
-            <input type="text" id="logName" placeholder="Your Name">
-            <input type="text" id="logRoom" placeholder="Room Code">
-            <button id="loginBtn" onclick="login()">Enter Space</button>
-            <p onclick="toggleForm()" style="cursor:pointer; color:var(--pink); font-size:0.8rem; margin-top:20px;">Create New Room</p>
-        </div>
-
-        <div id="reg-form" style="display:none">
-            <input type="text" id="regRoom" placeholder="Room Code">
-            <input type="text" id="p1" placeholder="Partner 1 Name">
-            <input type="text" id="p2" placeholder="Partner 2 Name">
-            <textarea id="l1" placeholder="Letter for P1"></textarea>
-            <textarea id="l2" placeholder="Letter for P2"></textarea>
-            <select id="songChoice">
-                <option value="perfect">Ed Sheeran - Perfect</option>
-                <option value="thinking">Ed Sheeran - Thinking Out Loud</option>
-                <option value="herewith">d4vd - Here With Me</option>
-                <option value="allofme">John Legend - All of Me</option>
-                <option value="ilikemebetter">Lauv - I Like Me Better</option>
-            </select>
-            <button onclick="register()">Register Room</button>
-            <p onclick="toggleForm()" style="cursor:pointer; color:var(--pink); font-size:0.8rem; margin-top:15px;">Back to Login</p>
-        </div>
-    </div>
-
-    <div id="game-interface">
-        <div id="status-bar">Searching for partner...</div>
-        <div class="heart-main" id="heart">❤️</div>
-        <div id="pulse-count" style="font-size: 1.8rem; color:var(--deep-red); margin-top:20px; font-weight:bold;">0 Pulses</div>
-        <button id="letterBtn" style="display:none; width:200px; margin:20px auto; color:var(--pink); background:white; border:2px solid var(--pink);" onclick="openLetter()">Read My Letter</button>
-        
-        <div id="gift-panel" style="display:none;">
-            <span class="gift-item" onclick="sendGift('🌹')">🌹</span>
-            <span class="gift-item" onclick="sendGift('🍫')">🍫</span>
-            <span class="gift-item" onclick="sendGift('💍')">💍</span>
-            <span class="gift-item" onclick="sendGift('🧸')">🧸</span>
-        </div>
-    </div>
-
-    <div id="letter-modal">
-        <div class="paper">
-            <div id="letterBody"></div>
-            <button onclick="closeLetter()" style="background:var(--text-dark); margin-top:20px;">Close</button>
-        </div>
-    </div>
-
-    <audio id="musicPlayer" loop></audio>
-
-    <script>
-        // Updated to your Render URL
-        const BACKEND_URL = "https://valent-backend.onrender.com";
-        let myRoom = "", myName = "", socket = null;
-
-        // Path logic: Pointing to the music folder in your root
-        const songPaths = {
-            perfect: "music/Ed Sheeran - Perfect.mp3",
-            thinking: "music/Ed Sheeran - Thinking Out Loud (Lyrics).mp3",
-            herewith: "music/d4vd - Here With Me [Official Music Video].mp3",
-            allofme: "music/John Legend - All of Me (Lyrics).mp3",
-            ilikemebetter: "music/Lauv - I Like Me Better [Official Audio].mp3"
-        };
-
-        function setupSocketListeners() {
-            socket.on('receive-gift', d => showFloatingGift(d.emoji));
-            socket.on('receive-pulse', d => triggerVisuals(d.x, d.y, false));
-            socket.on('update-count', count => { 
-                document.getElementById('pulse-count').innerText = `${count} Pulses`; 
-            });
-            
-            socket.on('update-ui', d => {
-                const statusBar = document.getElementById('status-bar');
-                if (d.isPartnerPresent) {
-                    statusBar.innerText = "Partner Connected ❤️";
-                    statusBar.style.color = "var(--success)";
-                    document.getElementById('letterBtn').style.display = 'block';
-                    document.getElementById('gift-panel').style.display = 'flex';
-                } else {
-                    statusBar.innerText = "Searching for partner...";
-                    statusBar.style.color = "var(--pink)";
-                }
-            });
-        }
-
-        async function login() {
-            const nameField = document.getElementById('logName').value.trim();
-            const roomField = document.getElementById('logRoom').value.trim().toUpperCase();
-            
-            if (!nameField || !roomField) return alert("Please enter both Name and Room Code");
-
-            // Prepare audio for playback (mobile requirement)
-            const player = document.getElementById('musicPlayer');
-            player.play().then(() => player.pause()).catch(() => { });
-
-            try {
-                const res = await fetch(`${BACKEND_URL}/api/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ roomCode: roomField, myName: nameField })
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    myName = nameField; 
-                    myRoom = roomField;
-                    
-                    document.getElementById('letterBody').innerText = data.letter;
-                    document.getElementById('pulse-count').innerText = `${data.pulseCount} Pulses`;
-                    
-                    // Set song based on choice
-                    player.src = songPaths[data.song] || songPaths.perfect;
-
-                    document.getElementById('auth-section').style.display = 'none';
-                    document.getElementById('game-interface').style.display = 'block';
-
-                    // Initialize Socket
-                    socket = io(BACKEND_URL, { 
-                        transports: ['websocket', 'polling'], 
-                        withCredentials: true 
-                    });
-                    
-                    setupSocketListeners();
-                    socket.emit('join-room', myRoom);
-                } else { 
-                    alert("Login failed. Check room code or name."); 
-                }
-            } catch (e) { 
-                alert("Connection error. Ensure your Render backend is running."); 
-            }
-        }
-
-        function sendGift(emoji) { 
-            if (socket) socket.emit('send-gift', { roomId: myRoom, emoji }); 
-        }
-
-        function showFloatingGift(emoji) {
-            const gift = document.createElement('div');
-            gift.className = 'floating-gift';
-            gift.innerText = emoji;
-            gift.style.left = Math.random() * 80 + 10 + 'vw';
-            gift.style.top = '80vh';
-            document.body.appendChild(gift);
-            setTimeout(() => gift.remove(), 2500);
-        }
-
-        document.getElementById('heart').addEventListener('click', (e) => {
-            const x = e.clientX / window.innerWidth, y = e.clientY / window.innerHeight;
-            if (socket) socket.emit('send-pulse', { roomId: myRoom, x, y });
-            triggerVisuals(x, y, true);
-            
-            // Heart pop animation
-            const heart = document.getElementById('heart');
-            heart.style.transform = "scale(1.2)";
-            setTimeout(() => heart.style.transform = "scale(1)", 100);
+    try {
+        // Increase the fetch timeout logic or just handle the error gracefully
+        const res = await fetch(`${BACKEND_URL}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomCode: roomField, myName: nameField })
         });
 
-        function triggerVisuals(x, y, isMe) {
-            const r = document.createElement('div');
-            r.className = 'ripple';
-            r.style.left = (x * window.innerWidth) + 'px';
-            r.style.top = (y * window.innerHeight) + 'px';
-            if (!isMe) r.style.borderColor = "var(--success)";
-            document.body.appendChild(r);
-            setTimeout(() => r.remove(), 1200);
-        }
+        if (res.ok) {
+            const data = await res.json();
+            myName = nameField;
+            myRoom = roomField;
 
-        function openLetter() {
-            document.getElementById('letter-modal').style.display = 'flex';
-            document.getElementById('musicPlayer').play();
-        }
+            document.getElementById('letterBody').innerText = data.letter;
+            document.getElementById('pulse-count').innerText = `${data.pulseCount} Pulses`;
+            player.src = songPaths[data.song] || songPaths.perfect;
 
-        function closeLetter() { 
-            document.getElementById('letter-modal').style.display = 'none'; 
-        }
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('game-interface').style.display = 'block';
 
-        function toggleForm() {
-            const loginForm = document.getElementById('login-form');
-            const regForm = document.getElementById('reg-form');
-            loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
-            regForm.style.display = regForm.style.display === 'none' ? 'block' : 'none';
-        }
-
-        async function register() {
-            const roomCode = document.getElementById('regRoom').value.trim().toUpperCase();
-            if(!roomCode) return alert("Room code is required");
-
-            const res = await fetch(`${BACKEND_URL}/api/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    roomCode,
-                    userA: document.getElementById('p1').value.trim(),
-                    userB: document.getElementById('p2').value.trim(),
-                    letterA: document.getElementById('l1').value,
-                    letterB: document.getElementById('l2').value,
-                    song: document.getElementById('songChoice').value
-                })
+            // MOBILE OPTIMIZED SOCKET INITIALIZATION
+            socket = io(BACKEND_URL, {
+                transports: ['polling', 'websocket'], // Try polling first for mobile stability
+                reconnectionAttempts: 5,
+                timeout: 20000 // Give the server 20 seconds to respond
             });
-            if (res.ok) { 
-                alert("Room Registered Successfully!"); 
-                toggleForm(); 
-            } else {
-                alert("Registration failed. Room code might be taken.");
-            }
+
+            setupSocketListeners();
+            socket.emit('join-room', myRoom);
+        } else {
+            alert("Login failed. Check room code or name.");
+            loginBtn.innerText = originalText;
+            loginBtn.disabled = false;
         }
-    </script>
-</body>
-</html>
+    } catch (e) {
+        // This is where the phone usually fails because Render is slow to start
+        alert("The server is still waking up. Please wait 10 seconds and try 'Enter Space' again!");
+        loginBtn.innerText = originalText;
+        loginBtn.disabled = false;
+    }
+}
+
+// Ensure heart clicks work well on touch devices
+document.getElementById('heart').addEventListener('touchstart', (e) => {
+    // Prevent double-tap to zoom on mobile
+    e.preventDefault(); 
+    const touch = e.touches[0];
+    const x = touch.clientX / window.innerWidth, y = touch.clientY / window.innerHeight;
+    
+    if (socket) socket.emit('send-pulse', { roomId: myRoom, x, y });
+    triggerVisuals(x, y, true);
+
+    const heart = document.getElementById('heart');
+    heart.style.transform = "scale(1.2)";
+    setTimeout(() => heart.style.transform = "scale(1)", 100);
+}, {passive: false});
