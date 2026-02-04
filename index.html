@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pulse Connect</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Quicksand:wght@300;500&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Quicksand:wght@300;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --pink: #ff4d6d;
@@ -42,9 +39,7 @@
             border: 2px solid var(--soft-pink);
         }
 
-        input,
-        textarea,
-        select {
+        input, textarea, select {
             background: var(--soft-pink);
             border: 1px solid #ffccd5;
             padding: 12px;
@@ -113,11 +108,8 @@
             transform: translateX(-50%);
         }
 
-        .gift-item {
-            font-size: 1.8rem;
-            cursor: pointer;
-            transition: 0.2s;
-        }
+        .gift-item { font-size: 1.8rem; cursor: pointer; transition: 0.2s; }
+        .gift-item:hover { transform: scale(1.3); }
 
         .ripple {
             position: absolute;
@@ -128,17 +120,8 @@
         }
 
         @keyframes rippleEffect {
-            from {
-                width: 0;
-                height: 0;
-                opacity: 1;
-            }
-
-            to {
-                width: 500px;
-                height: 500px;
-                opacity: 0;
-            }
+            from { width: 0; height: 0; opacity: 1; }
+            to { width: 500px; height: 500px; opacity: 0; }
         }
 
         .floating-gift {
@@ -150,15 +133,8 @@
         }
 
         @keyframes floatUp {
-            0% {
-                transform: translateY(0);
-                opacity: 1;
-            }
-
-            100% {
-                transform: translateY(-400px);
-                opacity: 0;
-            }
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-400px); opacity: 0; }
         }
 
         #letter-modal {
@@ -182,10 +158,10 @@
             font-family: 'Dancing Script', cursive;
             font-size: 1.8rem;
             border-left: 5px solid var(--pink);
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
         }
     </style>
 </head>
-
 <body>
 
     <div id="auth-section" class="container">
@@ -194,8 +170,7 @@
             <input type="text" id="logName" placeholder="Your Name">
             <input type="text" id="logRoom" placeholder="Room Code">
             <button id="loginBtn" onclick="login()">Enter Space</button>
-            <p onclick="toggleForm()" style="cursor:pointer; color:var(--pink); font-size:0.8rem; margin-top:20px;">
-                Create New Room</p>
+            <p onclick="toggleForm()" style="cursor:pointer; color:var(--pink); font-size:0.8rem; margin-top:20px;">Create New Room</p>
         </div>
 
         <div id="reg-form" style="display:none">
@@ -212,19 +187,16 @@
                 <option value="ilikemebetter">Lauv - I Like Me Better</option>
             </select>
             <button onclick="register()">Register Room</button>
-            <p onclick="toggleForm()" style="cursor:pointer; color:var(--pink); font-size:0.8rem; margin-top:15px;">Back
-                to Login</p>
+            <p onclick="toggleForm()" style="cursor:pointer; color:var(--pink); font-size:0.8rem; margin-top:15px;">Back to Login</p>
         </div>
     </div>
 
     <div id="game-interface">
         <div id="status-bar">Searching for partner...</div>
         <div class="heart-main" id="heart">❤️</div>
-        <div id="pulse-count" style="font-size: 1.8rem; color:var(--deep-red); margin-top:20px; font-weight:bold;">0
-            Pulses</div>
-        <button id="letterBtn"
-            style="display:none; width:200px; margin:20px auto; color:var(--pink); background:white; border:2px solid var(--pink);"
-            onclick="openLetter()">Read My Letter</button>
+        <div id="pulse-count" style="font-size: 1.8rem; color:var(--deep-red); margin-top:20px; font-weight:bold;">0 Pulses</div>
+        <button id="letterBtn" style="display:none; width:200px; margin:20px auto; color:var(--pink); background:white; border:2px solid var(--pink);" onclick="openLetter()">Read My Letter</button>
+        
         <div id="gift-panel" style="display:none;">
             <span class="gift-item" onclick="sendGift('🌹')">🌹</span>
             <span class="gift-item" onclick="sendGift('🍫')">🍫</span>
@@ -243,21 +215,26 @@
     <audio id="musicPlayer" loop></audio>
 
     <script>
-        const BACKEND_URL = "https://valentconnect-backend.vercel.app";
+        // Updated to your Render URL
+        const BACKEND_URL = "https://valent-backend.onrender.com";
         let myRoom = "", myName = "", socket = null;
 
+        // Path logic: Pointing to the music folder in your root
         const songPaths = {
-            perfect: "../music/Ed Sheeran - Perfect.mp3",
-            thinking: "../music/Ed Sheeran - Thinking Out Loud (Lyrics).mp3",
-            herewith: "../music/d4vd - Here With Me [Official Music Video].mp3",
-            allofme: "../music/John Legend - All of Me (Lyrics).mp3",
-            ilikemebetter: "../music/Lauv - I Like Me Better [Official Audio].mp3"
+            perfect: "music/Ed Sheeran - Perfect.mp3",
+            thinking: "music/Ed Sheeran - Thinking Out Loud (Lyrics).mp3",
+            herewith: "music/d4vd - Here With Me [Official Music Video].mp3",
+            allofme: "music/John Legend - All of Me (Lyrics).mp3",
+            ilikemebetter: "music/Lauv - I Like Me Better [Official Audio].mp3"
         };
 
         function setupSocketListeners() {
             socket.on('receive-gift', d => showFloatingGift(d.emoji));
             socket.on('receive-pulse', d => triggerVisuals(d.x, d.y, false));
-            socket.on('update-count', count => { document.getElementById('pulse-count').innerText = `${count} Pulses`; });
+            socket.on('update-count', count => { 
+                document.getElementById('pulse-count').innerText = `${count} Pulses`; 
+            });
+            
             socket.on('update-ui', d => {
                 const statusBar = document.getElementById('status-bar');
                 if (d.isPartnerPresent) {
@@ -275,8 +252,10 @@
         async function login() {
             const nameField = document.getElementById('logName').value.trim();
             const roomField = document.getElementById('logRoom').value.trim().toUpperCase();
-            if (!nameField || !roomField) return alert("Fields required");
+            
+            if (!nameField || !roomField) return alert("Please enter both Name and Room Code");
 
+            // Prepare audio for playback (mobile requirement)
             const player = document.getElementById('musicPlayer');
             player.play().then(() => player.pause()).catch(() => { });
 
@@ -289,22 +268,37 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    myName = nameField; myRoom = roomField;
+                    myName = nameField; 
+                    myRoom = roomField;
+                    
                     document.getElementById('letterBody').innerText = data.letter;
                     document.getElementById('pulse-count').innerText = `${data.pulseCount} Pulses`;
+                    
+                    // Set song based on choice
                     player.src = songPaths[data.song] || songPaths.perfect;
 
                     document.getElementById('auth-section').style.display = 'none';
                     document.getElementById('game-interface').style.display = 'block';
 
-                    socket = io(BACKEND_URL, { transports: ['websocket'], withCredentials: true });
+                    // Initialize Socket
+                    socket = io(BACKEND_URL, { 
+                        transports: ['websocket', 'polling'], 
+                        withCredentials: true 
+                    });
+                    
                     setupSocketListeners();
                     socket.emit('join-room', myRoom);
-                } else { alert("Login failed. Check room code/name."); }
-            } catch (e) { alert("Server error. Ensure backend is awake."); }
+                } else { 
+                    alert("Login failed. Check room code or name."); 
+                }
+            } catch (e) { 
+                alert("Connection error. Ensure your Render backend is running."); 
+            }
         }
 
-        function sendGift(emoji) { if (socket) socket.emit('send-gift', { roomId: myRoom, emoji }); }
+        function sendGift(emoji) { 
+            if (socket) socket.emit('send-gift', { roomId: myRoom, emoji }); 
+        }
 
         function showFloatingGift(emoji) {
             const gift = document.createElement('div');
@@ -320,6 +314,11 @@
             const x = e.clientX / window.innerWidth, y = e.clientY / window.innerHeight;
             if (socket) socket.emit('send-pulse', { roomId: myRoom, x, y });
             triggerVisuals(x, y, true);
+            
+            // Heart pop animation
+            const heart = document.getElementById('heart');
+            heart.style.transform = "scale(1.2)";
+            setTimeout(() => heart.style.transform = "scale(1)", 100);
         });
 
         function triggerVisuals(x, y, isMe) {
@@ -336,16 +335,22 @@
             document.getElementById('letter-modal').style.display = 'flex';
             document.getElementById('musicPlayer').play();
         }
-        function closeLetter() { document.getElementById('letter-modal').style.display = 'none'; }
+
+        function closeLetter() { 
+            document.getElementById('letter-modal').style.display = 'none'; 
+        }
+
         function toggleForm() {
-            const login = document.getElementById('login-form');
-            const reg = document.getElementById('reg-form');
-            login.style.display = login.style.display === 'none' ? 'block' : 'none';
-            reg.style.display = reg.style.display === 'none' ? 'block' : 'none';
+            const loginForm = document.getElementById('login-form');
+            const regForm = document.getElementById('reg-form');
+            loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
+            regForm.style.display = regForm.style.display === 'none' ? 'block' : 'none';
         }
 
         async function register() {
             const roomCode = document.getElementById('regRoom').value.trim().toUpperCase();
+            if(!roomCode) return alert("Room code is required");
+
             const res = await fetch(`${BACKEND_URL}/api/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -358,9 +363,13 @@
                     song: document.getElementById('songChoice').value
                 })
             });
-            if (res.ok) { alert("Room Registered!"); toggleForm(); }
+            if (res.ok) { 
+                alert("Room Registered Successfully!"); 
+                toggleForm(); 
+            } else {
+                alert("Registration failed. Room code might be taken.");
+            }
         }
     </script>
 </body>
-
 </html>
