@@ -249,11 +249,10 @@
     <audio id="musicPlayer" loop></audio>
 
     <script>
-        // Updated to your Render URL
+        // Updated to your Render URL - Ensure this is https for mobile security
         const BACKEND_URL = "https://valent-backend.onrender.com";
         let myRoom = "", myName = "", socket = null;
 
-        // Path logic: Pointing to the music folder in your root
         const songPaths = {
             perfect: "music/Ed Sheeran - Perfect.mp3",
             thinking: "music/Ed Sheeran - Thinking Out Loud (Lyrics).mp3",
@@ -289,18 +288,16 @@
 
             if (!nameField || !roomField) return alert("Please enter both Name and Room Code");
 
-            // CRITICAL FOR MOBILE: Unlock audio on the very first user interaction
+            // MOBILE AUDIO UNLOCK: Play and immediately pause to allow future audio
             const player = document.getElementById('musicPlayer');
             player.play().then(() => player.pause()).catch(() => { });
 
-            // Visual feedback that the server is waking up
             const loginBtn = document.getElementById('loginBtn');
             const originalText = loginBtn.innerText;
             loginBtn.innerText = "Waking up server...";
             loginBtn.disabled = true;
 
             try {
-                // Increase the fetch timeout logic or just handle the error gracefully
                 const res = await fetch(`${BACKEND_URL}/api/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -321,9 +318,9 @@
 
                     // MOBILE OPTIMIZED SOCKET INITIALIZATION
                     socket = io(BACKEND_URL, {
-                        transports: ['polling', 'websocket'], // Try polling first for mobile stability
-                        reconnectionAttempts: 5,
-                        timeout: 20000 // Give the server 20 seconds to respond
+                        transports: ['polling', 'websocket'], // Polling helps connect on mobile data
+                        reconnectionAttempts: 10,
+                        timeout: 20000
                     });
 
                     setupSocketListeners();
@@ -334,19 +331,18 @@
                     loginBtn.disabled = false;
                 }
             } catch (e) {
-                // This is where the phone usually fails because Render is slow to start
-                alert("The server is still waking up. Please wait 10 seconds and try 'Enter Space' again!");
+                alert("Server is still waking up. Please wait 10 seconds and try again!");
                 loginBtn.innerText = originalText;
                 loginBtn.disabled = false;
             }
         }
 
-        // Ensure heart clicks work well on touch devices
+        // Heart Click Handler (Touch for Mobile)
         document.getElementById('heart').addEventListener('touchstart', (e) => {
-            // Prevent double-tap to zoom on mobile
             e.preventDefault();
             const touch = e.touches[0];
-            const x = touch.clientX / window.innerWidth, y = touch.clientY / window.innerHeight;
+            const x = touch.clientX / window.innerWidth;
+            const y = touch.clientY / window.innerHeight;
 
             if (socket) socket.emit('send-pulse', { roomId: myRoom, x, y });
             triggerVisuals(x, y, true);
@@ -355,6 +351,17 @@
             heart.style.transform = "scale(1.2)";
             setTimeout(() => heart.style.transform = "scale(1)", 100);
         }, { passive: false });
+
+        // Heart Click Handler (Mouse for Laptop)
+        document.getElementById('heart').addEventListener('click', (e) => {
+            const x = e.clientX / window.innerWidth, y = e.clientY / window.innerHeight;
+            if (socket) socket.emit('send-pulse', { roomId: myRoom, x, y });
+            triggerVisuals(x, y, true);
+
+            const heart = document.getElementById('heart');
+            heart.style.transform = "scale(1.2)";
+            setTimeout(() => heart.style.transform = "scale(1)", 100);
+        });
 
         function sendGift(emoji) {
             if (socket) socket.emit('send-gift', { roomId: myRoom, emoji });
@@ -370,17 +377,6 @@
             setTimeout(() => gift.remove(), 2500);
         }
 
-        document.getElementById('heart').addEventListener('click', (e) => {
-            const x = e.clientX / window.innerWidth, y = e.clientY / window.innerHeight;
-            if (socket) socket.emit('send-pulse', { roomId: myRoom, x, y });
-            triggerVisuals(x, y, true);
-
-            // Heart pop animation
-            const heart = document.getElementById('heart');
-            heart.style.transform = "scale(1.2)";
-            setTimeout(() => heart.style.transform = "scale(1)", 100);
-        });
-
         function triggerVisuals(x, y, isMe) {
             const r = document.createElement('div');
             r.className = 'ripple';
@@ -393,7 +389,7 @@
 
         function openLetter() {
             document.getElementById('letter-modal').style.display = 'flex';
-            document.getElementById('musicPlayer').play();
+            document.getElementById('musicPlayer').play().catch(e => console.log("Audio play failed", e));
         }
 
         function closeLetter() {
